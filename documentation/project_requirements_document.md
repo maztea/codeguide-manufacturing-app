@@ -1,117 +1,144 @@
-# Project Requirements Document: codeguide-starter
+# Project Requirements Document (PRD)
+
+**Project Name:** codeguide-manufacturing-app  
+**Document Type:** Project Requirements Document  
+**Created For:** AI Model Reference  
 
 ---
 
 ## 1. Project Overview
 
-The **codeguide-starter** project is a boilerplate web application that provides a ready-made foundation for any web project requiring secure user authentication and a post-login dashboard. It sets up the common building blocks—sign-up and sign-in pages, API routes to handle registration and login, and a simple dashboard interface driven by static data. By delivering this skeleton, it accelerates development time and ensures best practices are in place from day one.
+codeguide-manufacturing-app is a full-stack web application starter kit designed as the foundation for building a Manufacturing Execution System (MES) or Enterprise Resource Planning (ERP) solution. It provides out-of-the-box user authentication, a protected dashboard interface, a rich UI component library, and a type-safe data layer. By offering these core capabilities, it eliminates boilerplate work and accelerates development of specialized manufacturing modules—such as Bill of Materials (BOM), inventory management, and production workflows.
 
-This starter kit is being built to solve the friction developers face when setting up repeated common tasks: credential handling, session management, page routing, and theming. Key objectives include: 1) delivering a fully working authentication flow (registration & login), 2) providing a gated dashboard area upon successful login, 3) establishing a clear, maintainable project structure using Next.js and TypeScript, and 4) demonstrating a clean theming approach with global and section-specific CSS. Success is measured by having an end-to-end login journey in under 200 lines of code and zero runtime type errors.
+The project is being built to help development teams quickly launch reliable, secure, and maintainable manufacturing software. Key objectives include:
+
+- Secure, role-based user management (e.g., planners, warehouse staff, supervisors)
+- A modular, type-safe codebase in TypeScript from front end through database
+- Easy containerized deployment (Docker & Docker Compose)
+
+Success criteria for the first release:
+
+1. Developers can sign up, sign in, and access a protected dashboard.  
+2. CRUD operations for BOM, Inventory, and Work Orders exist via RESTful API and UI pages.  
+3. End-to-end type safety and seamless local-to-production parity.
 
 ---
 
 ## 2. In-Scope vs. Out-of-Scope
 
-### In-Scope (Version 1)
-- User registration (sign-up) form with validation
-- User login (sign-in) form with validation
-- Next.js API routes under `/api/auth/route.ts` handling:
-  - Credential validation
-  - Password hashing (e.g., bcrypt)
-  - Session creation or JWT issuance
-- Protected dashboard pages under `/dashboard`:
-  - `layout.tsx` wrapping dashboard content
-  - `page.tsx` rendering static data from `data.json`
-- Global application layout in `/app/layout.tsx`
-- Basic styling via `globals.css` and `dashboard/theme.css`
-- TypeScript strict mode enabled
+### In-Scope (First Version)
 
-### Out-of-Scope (Later Phases)
-- Integration with a real database (PostgreSQL, MongoDB, etc.)
-- Advanced authentication flows (password reset, email verification, MFA)
-- Role-based access control (RBAC)
-- Multi-tenant or white-label theming
-- Unit, integration, or end-to-end testing suites
-- CI/CD pipeline and production deployment scripts
+- User authentication & session management using Better Auth  
+- Role-Based Access Control (RBAC) middleware for API routes  
+- Protected dashboard layout with KPI placeholders (OEE, inventory levels, plan adherence)  
+- Core UI components (tables, charts, forms) via Shadcn UI + Tailwind CSS  
+- REST API routes under `/app/api/` for BOM, Inventory, Work Orders  
+- Database schema definitions in `/db/schema/` using Drizzle ORM  
+- Database migrations with `drizzle-kit`  
+- Docker and Docker Compose configurations for app + PostgreSQL  
+- Input validation with Zod, structured logging with Pino  
+
+### Out-of-Scope (Later Phase)
+
+- Real-time updates via WebSockets or server-sent events  
+- Advanced scheduling, production planning algorithms  
+- Mobile-native or offline support  
+- Notifications (email/SMS) and audit trails  
+- Multi-tenant architecture or advanced analytics dashboards  
 
 ---
 
 ## 3. User Flow
 
-A new visitor lands on the root URL and sees a welcome page with options to **Sign Up** or **Sign In**. If they choose Sign Up, they fill in their email, password, and hit “Create Account.” The form submits to `/api/auth/route.ts`, which hashes the password, creates a new user session or token, and redirects them to the dashboard. If any input is invalid, an inline error message explains the issue (e.g., “Password too short”).
+When a new user lands on the application, they see a public landing page with an option to sign up or sign in. After registering (providing email, password, and initial role), the user’s session is managed by Better Auth and stored in a secure cookie. Upon successful authentication, they are redirected to the **Dashboard** page. The dashboard shows summary cards for Overall Equipment Effectiveness (OEE), inventory levels, and production plan adherence. A left-side navigation menu lists modules: **BOM**, **Inventory**, and **Work Orders**.
 
-Once authenticated, the user is taken to the `/dashboard` route. Here they see a sidebar or header defined by `dashboard/layout.tsx`, and the main panel pulls in static data from `data.json`. They can log out (if that control is present), but otherwise their entire session is managed by server-side cookies or tokens. Returning users go directly to Sign In, submit credentials, and upon success they land back on `/dashboard`. Any unauthorized access to `/dashboard` redirects back to Sign In.
+Clicking each module takes the user to a list page. For example, in the **BOM** section, a data table displays all BOM records, with buttons to `Create`, `Edit`, or `Delete`. Creating a new BOM opens a form where the user enters a BOM code, description, and line items. Submitting triggers a POST to `/api/bom`, validated by Zod and persisted by Drizzle ORM. Similar flows exist for **Inventory** (adding stock, viewing levels) and **Work Orders** (creating orders, issuing materials, completing production). Errors (e.g., insufficient stock) return user-friendly messages, and successes refresh the list view.
 
 ---
 
 ## 4. Core Features
 
-- **Sign-Up Page (`/app/sign-up/page.tsx`)**: Form fields for email & password, client-side validation, POST to `/api/auth`.
-- **Sign-In Page (`/app/sign-in/page.tsx`)**: Form fields for email & password, client-side validation, POST to `/api/auth`.
-- **Authentication API (`/app/api/auth/route.ts`)**: Handles both registration and login based on HTTP method, integrates password hashing (bcrypt) and session or JWT logic.
-- **Global Layout (`/app/layout.tsx` + `globals.css`)**: Shared header, footer, and CSS resets across all pages.
-- **Dashboard Layout (`/app/dashboard/layout.tsx` + `dashboard/theme.css`)**: Sidebar or top nav for authenticated flows, section-specific styling.
-- **Dashboard Page (`/app/dashboard/page.tsx`)**: Reads `data.json`, renders it as cards or tables.
-- **Static Data Source (`/app/dashboard/data.json`)**: Example dataset to demo dynamic rendering.
-- **TypeScript Configuration**: `tsconfig.json` with strict mode and path aliases (if any).
+- **Authentication & Authorization**: Sign-up, sign-in, session handling, and RBAC middleware  
+- **Protected Dashboard**: KPI overview and navigation menu for modules  
+- **UI Component Library**: Shadcn UI + Tailwind CSS for tables, charts, forms, inputs, buttons  
+- **API Routes**: Next.js API endpoints for BOM, Inventory, Work Orders under `/app/api/`  
+- **Type-Safe ORM & Schema**: Drizzle ORM for database models, `drizzle-kit` for migrations  
+- **Database Transactions**: Atomic operations for critical flows (e.g., material issuance)  
+- **Input Validation**: Zod schemas on API boundaries  
+- **Structured Logging**: Pino for consistent server logs  
+- **Containerization**: Dockerfiles and Docker Compose for local and production parity  
 
 ---
 
 ## 5. Tech Stack & Tools
 
-- **Framework**: Next.js (App Router) for file-based routing, SSR/SSG, and API routes.
-- **Language**: TypeScript for type safety.
-- **UI Library**: React 18 for component-based UI.
-- **Styling**: Plain CSS via `globals.css` (global reset) and `theme.css` (sectional styling). Can easily migrate to CSS Modules or Tailwind in the future.
-- **Backend**: Node.js runtime provided by Next.js API routes.
-- **Password Hashing**: bcrypt (npm package).
-- **Session/JWT**: NextAuth.js or custom JWT logic (to be decided in implementation).
-- **IDE & Dev Tools**: VS Code with ESLint, Prettier extensions. Optionally, Cursor.ai for AI-assisted coding.
+Frontend:
+- Next.js (App Router)  
+- React 18+  
+- TypeScript  
+- Tailwind CSS & Shadcn UI  
+- NextThemes (dark/light mode)
+
+Backend:
+- Next.js API Routes  
+- Better Auth library for authentication  
+- Drizzle ORM & `drizzle-kit` migrations  
+- PostgreSQL database
+
+DevOps & Tools:
+- Docker & Docker Compose  
+- Zod for input + environment validation  
+- Pino for structured logging  
+- Jest for unit tests, Playwright or Cypress for E2E tests
+
+IDE & Plugins (optional):
+- VS Code  
+- GitHub Copilot, Cursor, Windsurf
 
 ---
 
 ## 6. Non-Functional Requirements
 
-- **Performance**: Initial page load under 200 ms on a standard broadband connection. API responses under 300 ms.
-- **Security**:
-  - HTTPS only in production.
-  - Proper CORS, CSRF protection for API routes.
-  - Secure password storage (bcrypt with salt).
-  - No credentials or secrets checked into version control.
-- **Scalability**: Structure must support adding database integration, caching layers, and advanced auth flows without rewiring core app.
-- **Usability**: Forms should give real-time feedback on invalid input. Layout must be responsive (mobile > 320 px).
-- **Maintainability**: Code must adhere to TypeScript strict mode. Linting & formatting enforced by ESLint/Prettier.
+Performance:
+- Page load time < 2 seconds on 3G throttle  
+- API response time < 200ms for simple queries
+
+Security:
+- HTTPS enforced end-to-end  
+- OWASP Top 10 mitigation (SQL injection, XSS, CSRF)  
+- Encrypted session cookies, secure JWT handling
+
+Compliance:
+- GDPR-compliant cookie banner and data handling  
+- Role-based data access control
+
+Usability:
+- Responsive design (desktop + tablet)  
+- Accessible (WCAG AA) forms and navigation  
+- Dark/light theme support for varied factory environments
 
 ---
 
 ## 7. Constraints & Assumptions
 
-- **No Database**: Dashboard uses only `data.json`; real database integration is deferred.
-- **Node Version**: Requires Node.js >= 14.
-- **Next.js Version**: Built on Next.js 13+ App Router.
-- **Authentication**: Assumes availability of bcrypt or NextAuth.js at implementation time.
-- **Hosting**: Targets serverless or Node.js-capable hosting (e.g., Vercel, Netlify).
-- **Browser Support**: Modern evergreen browsers; no IE11 support required.
+- Node.js >= v16 and PostgreSQL must be available in target environments.  
+- Docker must be supported for local and production setups.  
+- Better Auth library is compatible with Next.js App Router.  
+- Users have modern browsers (Chrome, Edge, Firefox).  
+- Drizzle ORM supports required transaction patterns.  
+- No external AI models are required in this phase.
 
 ---
 
 ## 8. Known Issues & Potential Pitfalls
 
-- **Static Data Limitation**: `data.json` is only for demo. A real API or database will be needed to avoid stale data.
-  *Mitigation*: Define a clear interface for data fetching so swapping to a live endpoint is trivial.
-
-- **Global CSS Conflicts**: Using global styles can lead to unintended overrides.
-  *Mitigation*: Plan to migrate to CSS Modules or utility-first CSS in Phase 2.
-
-- **API Route Ambiguity**: Single `/api/auth/route.ts` handling both sign-up and sign-in could get complex.
-  *Mitigation*: Clearly branch on HTTP method (`POST /register` vs. `POST /login`) or split into separate files.
-
-- **Lack of Testing**: No test suite means regressions can slip in.
-  *Mitigation*: Build a minimal Jest + React Testing Library setup in an early iteration.
-
-- **Error Handling Gaps**: Client and server must handle edge cases (network failures, malformed input).
-  *Mitigation*: Define a standard error response schema and show user-friendly messages.
+- **Concurrency / Race Conditions**: Simultaneous material issuance may cause inventory mismatches. Mitigation: wrap inventory checks and updates in database transactions with row-level locking.
+- **Schema Drift**: Manual database changes can diverge from migration history. Mitigation: enforce `drizzle-kit` migrations in CI/CD and run `drizzle-kit check` before deployments.
+- **RBAC Complexity**: Evolving permission sets may be hard to maintain. Mitigation: start with a simple roles matrix and build middleware with clear role-to-endpoint mapping.
+- **Large Data Volumes**: Rendering huge tables or charts can slow down the UI. Mitigation: implement pagination and lazy-loading, use virtualization for tables.
 
 ---
 
-This PRD should serve as the single source of truth for the AI model or any developer generating the next set of technical documents: Tech Stack Doc, Frontend Guidelines, Backend Structure, App Flow, File Structure, and IDE Rules. It contains all functional and non-functional requirements with no ambiguity, enabling seamless downstream development.
+**End of Document**
+
+This PRD provides a clear, unambiguous blueprint for the AI model and subsequent technical documents (Tech Stack, Frontend Guidelines, Backend Structure, etc.).
