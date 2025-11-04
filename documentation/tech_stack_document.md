@@ -1,90 +1,97 @@
-# Tech Stack Document
+# Tech Stack Document for codeguide-manufacturing-app
 
-This document explains the key technologies chosen for the **codeguide-starter** project. It’s written in everyday language so anyone—technical or not—can understand why each tool was picked and how it supports the application.
+This document explains, in everyday terms, why we picked each technology for the **codeguide-manufacturing-app** starter kit. It’s aimed at non-technical readers who want to understand how everything fits together.
 
 ## 1. Frontend Technologies
-The frontend is everything the user sees and interacts with. For this project, we’ve used:
+These tools power what users see and interact with in their browser:
 
 - **Next.js (App Router)**
-  - A React framework that makes page routing, server-side rendering, and API routes very simple.
-  - Enhances user experience by pre-rendering pages on the server or at build time, leading to faster initial load.
-- **React 18**
-  - The underlying library for building user interfaces with reusable components.
-  - Provides a smooth, interactive experience thanks to its virtual DOM and modern hooks.
+  - A React framework that handles page rendering on the server or client. It helps show up-to-date production and inventory data quickly.  
+- **React 19**
+  - The core library for building interactive components (forms, tables, charts).  
 - **TypeScript**
-  - A superset of JavaScript that adds types (labels for data).
-  - Helps catch errors early during development and makes the code easier to maintain.
-- **CSS (globals.css & theme.css)**
-  - **globals.css** applies base styles (fonts, colors, resets) across the entire app.
-  - **dashboard/theme.css** defines the look and feel specific to the dashboard area.
-  - This separation keeps styles organized and avoids accidental style conflicts.
+  - Adds type checks to JavaScript. It prevents mix-ups (e.g., treating a quantity as text) by catching mistakes at build time.  
+- **Tailwind CSS & Shadcn UI**
+  - Utility-first styling (Tailwind) plus a set of ready-made UI components (Shadcn UI) let us build clean, consistent interfaces fast.  
+- **Next-Themes**
+  - Enables light/dark mode switching. Useful if your factory floor prefers darker screens.
 
-By combining these tools, we have a clear structure (Next.js folders for pages and layouts), safer code (TypeScript), and flexible styling with vanilla CSS.
+**How these choices enhance UX:**
+  - Fast page loads and real-time updates (Next.js).  
+  - Predictable, bug-free forms and tables (TypeScript).  
+  - Consistent look and feel across every screen (Tailwind + Shadcn UI).  
 
 ## 2. Backend Technologies
-The backend handles data, user accounts, and the logic behind the scenes. Our choices here are:
+These handle data storage, business logic, and secure access:
 
-- **Next.js API Routes**
-  - Allows us to write server-side code (`route.ts` files) alongside our frontend in the same project.
-  - Runs on Node.js, so we can handle requests like sign-up, sign-in, and data fetching in one place.
-- **Node.js Runtime**
-  - The JavaScript environment on the server that executes our API routes.
-- **bcrypt** (npm package)
-  - A library for hashing passwords securely before storing them.
-  - Ensures that even if someone got access to our data, raw passwords aren’t visible.
-- **(Optional) NextAuth.js or JWT**
-  - While this starter kit shows a custom authentication flow, it can easily integrate services like NextAuth.js for email-based login or JWT (JSON Web Tokens) for stateless sessions.
+- **Next.js API Routes**  
+  - Lets us define REST endpoints (e.g., `/api/bom`, `/api/inventory`) right next to pages.  
+- **Better Auth**  
+  - A library for secure sign-up, sign-in, and session handling. We extend it to enforce user roles like “Planner” or “Warehouse Staff.”  
+- **PostgreSQL**  
+  - A reliable relational database for storing structured manufacturing data (BOMs, inventory levels, work orders).  
+- **Drizzle ORM**  
+  - A type-safe way to read and write database rows. It prevents errors by matching your code’s types to the database schema.  
+- **Drizzle-kit**  
+  - Manages database migrations—controlled, repeatable changes to your tables as your app evolves.  
+- **Zod**  
+  - Validates all incoming data (API inputs, environment variables) to catch bad requests early.  
+- **Pino (Structured Logging)**  
+  - Records server events in a consistent format. Helpful for debugging production issues or auditing actions.
 
-These components work together to receive user credentials, verify or store them securely, manage sessions or tokens, and deliver protected data back to the frontend.
+**How these pieces work together:**
+  - API routes receive requests, use Zod to validate inputs, check user permissions via Better Auth, and run Drizzle queries against PostgreSQL inside a transaction for data integrity.
 
 ## 3. Infrastructure and Deployment
-Infrastructure covers where and how we host the app, as well as how changes get delivered:
+How we host, version, and deliver the application:
 
-- **Git & GitHub**
-  - Version control system (Git) and remote hosting (GitHub) keep track of all code changes and allow team collaboration.
-- **Vercel (or Netlify)**
-  - A popular hosting service optimized for Next.js, with one-click deployments and global content delivery.
-  - Automatically rebuilds and deploys the site whenever code is pushed to the main branch.
-- **GitHub Actions (CI/CD)**
-  - Automates tasks like linting (ESLint), formatting (Prettier), and running any tests you add.
-  - Ensures that only clean, tested code goes live.
+- **Docker & Docker Compose**  
+  - Containers wrap the app and database so they run the same way on every machine and in production.  
+- **Git & GitHub**  
+  - Version control system to track code changes and collaborate.  
+- **GitHub Actions (CI/CD)**  
+  - Automates testing and deployment pipelines, ensuring new code is checked and released smoothly.
 
-Together, these tools provide a reliable, scalable setup where every code change is tested and deployed quickly, with minimal manual work.
+**Benefits:**
+  - One-command setup (`docker-compose up`) for local development.  
+  - Reliable, repeatable deployments with minimal manual steps.  
+  - Automatic testing and checks before any code goes live.
 
 ## 4. Third-Party Integrations
-While this starter kit is minimal by design, it already includes or can easily add:
+External services and libraries that extend functionality:
 
-- **bcrypt**
-  - For secure password hashing (included as an npm dependency).
-- **NextAuth.js** (optional)
-  - A full-featured authentication library supporting email/password, OAuth, and more.
-- **Sentry or LogRocket** (optional)
-  - For real-time error tracking and performance monitoring in production.
+- **Better Auth** (authentication and session management)  
+- **Shadcn UI** (pre-built React components for tables, forms, buttons)  
+- **Drizzle ORM & Drizzle-kit** (database access and migrations)  
+- **Zod** (data validation)  
+- **Pino** (logging)  
+- **Jest, Playwright/Cypress** (testing frameworks—unit, integration, end-to-end)
 
-These integrations help extend the app’s capabilities without building every feature from scratch.
+**Why they matter:**
+  - We don’t reinvent wheels: these libraries are battle-tested and focus our effort on manufacturing logic instead of low-level plumbing.
 
 ## 5. Security and Performance Considerations
-We’ve baked in several measures to keep users safe and the app running smoothly:
+Measures we’ve built in to keep data safe and ensure smooth operation:
 
-Security:
-- Passwords are never stored in plain text—bcrypt hashes them with a random salt.
-- API routes can implement CSRF protection and input validation to block malicious requests.
-- Session tokens or cookies are marked secure and HttpOnly to prevent theft via JavaScript.
-
-Performance:
-- Server-side rendering (SSR) and static site generation (SSG) in Next.js deliver pages faster.
-- Code splitting and lazy-loaded components ensure users only download what they need.
-- Global CSS and theme files are small and cached by the browser for quick repeat visits.
-
-These strategies work together to give users a fast, secure experience every time.
+- **Secure Authentication & RBAC**  
+  - Only authorized roles can create work orders, issue materials, or adjust inventory.  
+- **Type Safety End to End**  
+  - TypeScript and Drizzle prevent type mismatches, reducing runtime crashes and data errors.  
+- **Input Validation**  
+  - Zod ensures every API call meets our rules (e.g., quantity must be a positive number).  
+- **Atomic Database Transactions**  
+  - Multi-step operations (like issuing material and updating inventory) succeed or fail together—no half-done updates.  
+- **Structured Logging**  
+  - Pino captures detailed logs for troubleshooting production issues quickly.  
+- **Testing Strategy**  
+  - Unit tests (Jest) for core logic, integration tests for API flows, and end-to-end tests (Playwright/Cypress) to simulate real users.
 
 ## 6. Conclusion and Overall Tech Stack Summary
-In building **codeguide-starter**, we chose technologies that:
+- We chose **Next.js + React + TypeScript** for a fast, type-safe, and interactive user interface.  
+- **Tailwind CSS + Shadcn UI** deliver a consistent, easy-to-maintain design system.  
+- **Next.js API Routes + Better Auth + PostgreSQL + Drizzle ORM** give us secure, type-checked data handling and user management.  
+- **Docker**, **GitHub**, and **GitHub Actions** make development and deployment simple and reliable.  
+- **Zod** and **Pino** add robust validation and logging.  
+- **Comprehensive testing** ensures key manufacturing workflows (BOM management, material issuance, production tracking) run smoothly.
 
-- Align with modern web standards (Next.js, React, TypeScript).
-- Provide a clear, file-based project structure for rapid onboarding.
-- Offer built-in support for server-side rendering, API routes, and static assets.
-- Emphasize security through password hashing, session management, and safe defaults.
-- Enable easy scaling and future enhancements via modular code and optional integrations.
-
-This stack strikes a balance between simplicity for newcomers and flexibility for experienced teams. It accelerates development of a secure authentication flow and a polished dashboard, while leaving room to plug in databases, test suites, and advanced features as the project grows.
+Together, this stack provides a rock-solid foundation for any Manufacturing Execution System or ERP application—so you can focus on the unique business logic that makes your factory run.

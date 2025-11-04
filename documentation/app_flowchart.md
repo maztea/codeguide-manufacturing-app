@@ -1,14 +1,25 @@
 flowchart TD
-  Start[Landing Page]
-  SignUpPage[Sign Up Page]
-  SignInPage[Sign In Page]
-  AuthAPI[Authentication API Endpoint]
-  DashboardPage[Dashboard Page]
-  Start -->|Select Sign Up| SignUpPage
-  Start -->|Select Sign In| SignInPage
-  SignUpPage -->|Submit Credentials| AuthAPI
-  SignInPage -->|Submit Credentials| AuthAPI
-  AuthAPI -->|Success| DashboardPage
-  AuthAPI -->|Error| SignUpPage
-  AuthAPI -->|Error| SignInPage
-  DashboardPage -->|Click Logout| Start
+  Start[Start] --> Auth[Authentication]
+  Auth --> C{Authenticated?}
+  C -->|yes| Dashboard[Dashboard]
+  C -->|no| Auth
+  Dashboard --> BOM[BOM Management]
+  Dashboard --> Inventory[Inventory Management]
+  Dashboard --> Production[Production Workflow]
+  BOM --> BOMList[List BOMs]
+  BOM --> BOMCreate[Create BOM]
+  BOMList --> BOMDetail[BOM Details]
+  BOMCreate --> APIBOMPost[API Post BOM]
+  Inventory --> InventoryList[List Inventory]
+  Inventory --> InventoryUpdate[Update Inventory]
+  InventoryList --> APIInventoryGet[API Get Inventory]
+  InventoryUpdate --> APIInventoryPost[API Post Inventory]
+  Production --> WorkOrderList[List Work Orders]
+  Production --> IssueMaterial[Issue Material]
+  WorkOrderList --> APIProductionGet[API Get Production]
+  IssueMaterial --> APIProductionPost[API Issue Material]
+  APIBOMPost --> DB[Database]
+  APIInventoryGet --> DB
+  APIInventoryPost --> DB
+  APIProductionGet --> DB
+  APIProductionPost --> DB
