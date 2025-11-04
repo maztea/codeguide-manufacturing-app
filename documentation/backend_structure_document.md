@@ -1,179 +1,218 @@
-# Backend Structure Document
-
-This document outlines the backend architecture, hosting, and infrastructure for the **codeguide-starter** project. It uses plain language so anyone can understand how the backend is set up and how it supports the application.
+# Backend Structure Document for codeguide-manufacturing-app
 
 ## 1. Backend Architecture
 
-- **Framework and Design Pattern**
-  - We use **Next.js API Routes** to handle all server-side logic. These routes live alongside the frontend code in the same repository, making development and deployment simpler.
-  - The backend follows a **layered pattern**:
-    1. **API Layer**: Receives requests (login, registration, data fetch).  
-    2. **Service Layer**: Contains the core business logic (user validation, password hashing).  
-    3. **Data Access Layer**: Talks to the database via a simple ORM (e.g., Prisma or TypeORM).
+This backend follows a clear, modular design that separates responsibilities into layers and makes it easy to add new manufacturing modules.
 
-- **Scalability**
-  - Stateless API routes can scale horizontally—new instances can spin up on demand.  
-  - We can add caching or a message queue (e.g., Redis or RabbitMQ) without changing the core code.
+**Key Components and Design Patterns**
+- **Next.js API Routes**: Each REST endpoint lives under `/app/api/`, keeping routing and handlers together.
+- **Layered Architecture**:
+  - **API Layer**: Receives requests, handles authentication/authorization, and delegates to business logic.
+  - **Service Layer**: Implements manufacturing workflows (e.g., issuing materials, creating work orders).
+  - **Data Access Layer**: Uses Drizzle ORM to query PostgreSQL in a type-safe way.
+- **Full-Stack TypeScript**: Ensures type consistency from database to frontend, reducing runtime errors.
+- **Docker Containerization**: The backend and database run in containers for consistency across environments.
 
-- **Maintainability**
-  - Code for each feature is grouped by route (authentication, dashboard).  
-  - A service layer separates complex logic from request handling.
+**Scalability, Maintainability, and Performance**
+- **Stateless Services**: API routes are stateless, letting you spin up multiple instances behind a load balancer.
+- **Modular Code Structure**: Concerns are split across folders (`/app/api/`, `/lib/`, `/db/schema/`), making it easy to navigate and extend.
+- **Type-Safe ORM**: Drizzle ORM’s compile-time checks prevent query mistakes and help optimize database interactions.
+- **Containerization**: Docker images ensure that “it works on my machine” is a guarantee in development and production.
 
-- **Performance**
-  - Lightweight Node.js handlers keep response times low.  
-  - Future use of database connection pooling and Redis for caching repeated queries.
+---
 
 ## 2. Database Management
 
-- **Database Choice**
-  - We recommend **PostgreSQL** for structured data and reliable transactions.  
-  - In-memory caching can be added later with **Redis** for session tokens or frequently read data.
+**Database Technology**
+- PostgreSQL (relational SQL database)
+- Drizzle ORM (type-safe query builder)
+- drizzle-kit for schema migrations
 
-- **Data Storage and Access**
-  - Use an ORM like **Prisma** or **TypeORM** to map JavaScript/TypeScript objects to database tables.
-  - Connection pooling ensures efficient use of database connections under load.
-  - Migrations track schema changes over time, keeping development, staging, and production in sync.
+**Data Storage and Access**
+- **Structured Tables**: Business entities like `Bom`, `Inventory`, `WorkOrder`, and `MaterialIssue` are each mapped to tables.
+- **Migrations**: Version-controlled migrations automatically apply schema changes in development, staging, and production.
+- **Transactions**: Critical workflows (e.g., checking stock and issuing materials) run in PostgreSQL transactions to guarantee data consistency.
+- **Indexing**: Common query fields (e.g., `bom_code`, `work_order_id`) are indexed to accelerate lookups.
+- **Backups**: Regular automated dumps or snapshots ensure data recovery options.
 
-- **Data Practices**
-  - Passwords are never stored in plain text—they are salted and hashed with **bcrypt** before saving.
-  - All outgoing data is typed and validated to prevent malformed records.
+---
 
 ## 3. Database Schema
 
-### Human-Readable Format
+### Human-Readable Schema Overview
 
-- **Users**
-  - **id**: Unique identifier  
-  - **email**: User’s email address (unique)  
-  - **password_hash**: Securely hashed password  
-  - **created_at**: Account creation timestamp
+Users and Authentication:
+- **User**: id, email, password_hash, role, created_at
+- **Role**: name (e.g., Planner, Warehouse, Supervisor)
 
-- **Sessions**
-  - **id**: Unique session record  
-  - **user_id**: Links to a user  
-  - **token**: Random string for authentication  
-  - **expires_at**: When the token stops working  
-  - **created_at**: When the session was created
+Manufacturing Entities:
+- **Bom**: id, bom_code, description, created_at
+- **BomItem**: id, bom_id, part_number, quantity_required
+- **Inventory**: id, part_number, quantity_on_hand, warehouse_location
+- **WorkOrder**: id, work_order_id, bom_id, quantity_to_produce, status, created_at, scheduled_date
+- **MaterialIssue**: id, work_order_id, bom_item_id, quantity_issued, issued_by, issued_at
 
-- **DashboardItems** *(optional for dynamic data)*
-  - **id**: Unique record  
-  - **title**: Item title  
-  - **content**: Item details  
-  - **created_at**: When the item was added
-
-### SQL Schema (PostgreSQL)
+### PostgreSQL Schema (SQL)
 ```sql
--- Users table
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
+-- Users and Roles
+CREATE TABLE "Role" (
+  name TEXT PRIMARY KEY
+);
+
+CREATE TABLE "User" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL REFERENCES "Role"(name),
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Sessions table
-CREATE TABLE sessions (
-  id SERIAL PRIMARY KEY,
-  user_id INT REFERENCES users(id) ON DELETE CASCADE,
-  token VARCHAR(255) UNIQUE NOT NULL,
-  expires_at TIMESTAMPTZ NOT NULL,
+-- Bill of Materials
+CREATE TABLE "Bom" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  bom_code TEXT UNIQUE NOT NULL,
+  description TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Dashboard items table
-CREATE TABLE dashboard_items (
-  id SERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  content TEXT,
+CREATE TABLE "BomItem" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  bom_id UUID NOT NULL REFERENCES "Bom"(id) ON DELETE CASCADE,
+  part_number TEXT NOT NULL,
+  quantity_required INTEGER NOT NULL
+);
+
+-- Inventory
+CREATE TABLE "Inventory" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  part_number TEXT UNIQUE NOT NULL,
+  quantity_on_hand INTEGER NOT NULL,
+  warehouse_location TEXT,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Work Orders
+CREATE TABLE "WorkOrder" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  work_order_id TEXT UNIQUE NOT NULL,
+  bom_id UUID NOT NULL REFERENCES "Bom"(id),
+  quantity_to_produce INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  scheduled_date DATE,
   created_at TIMESTAMPTZ DEFAULT now()
 );
-```  
+
+-- Material Issues
+CREATE TABLE "MaterialIssue" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  work_order_id UUID NOT NULL REFERENCES "WorkOrder"(id) ON DELETE CASCADE,
+  bom_item_id UUID NOT NULL REFERENCES "BomItem"(id),
+  quantity_issued INTEGER NOT NULL,
+  issued_by UUID NOT NULL REFERENCES "User"(id),
+  issued_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+---
 
 ## 4. API Design and Endpoints
 
-- **Approach**: We follow a **RESTful** style, grouping related endpoints under `/api` directories.
+**RESTful Approach**
+- Each resource (BOM, Inventory, WorkOrder) has a dedicated route under `/api`.
+- Standard HTTP methods are used: `GET` for reads, `POST` for creation, `PUT/PATCH` for updates, and `DELETE` for removals.
 
-- **Key Endpoints**
-  - `POST /api/auth/register`  
-    • Accepts `{ email, password }`  
-    • Creates a new user and issues a session token  
-  - `POST /api/auth/login`  
-    • Accepts `{ email, password }`  
-    • Verifies credentials and returns a session token  
-  - `POST /api/auth/logout`  
-    • Invalidates the session token on the server  
-  - `GET /api/dashboard/data`  
-    • Requires a valid session  
-    • Returns user-specific data or dashboard items  
+**Key Endpoints**
+- **Authentication** (`/api/auth`)
+  - `POST /signup` – Create a new user account.
+  - `POST /login` – Authenticate and start a session.
+  - `POST /logout` – End the session.
 
-- **Communication**
-  - Frontend sends JSON requests; backend replies with JSON and appropriate HTTP status codes.  
-  - Protected routes check for a valid session token (in cookies or Authorization header).
+- **Bill of Materials** (`/api/bom`)
+  - `GET /api/bom` – List all BOMs.
+  - `POST /api/bom` – Create a new BOM.
+  - `GET /api/bom/{bom_code}` – Get details of a specific BOM.
+  - `PUT /api/bom/{bom_code}` – Update a BOM’s metadata or items.
+  - `DELETE /api/bom/{bom_code}` – Remove a BOM.
+
+- **Inventory** (`/api/inventory`)
+  - `GET /api/inventory` – List all inventory records.
+  - `POST /api/inventory` – Add or restock an item.
+  - `PUT /api/inventory/{part_number}` – Update stock levels or location.
+  - `DELETE /api/inventory/{part_number}` – Remove an item from inventory.
+
+- **Production / Work Orders** (`/api/production`)
+  - `GET /api/production/work-orders` – List work orders.
+  - `POST /api/production/work-orders` – Create a new order.
+  - `PUT /api/production/work-orders/{work_order_id}` – Update status or schedule.
+  - `POST /api/production/work-orders/{work_order_id}/issue-material` – Issue materials for an order.
+
+Each route uses Drizzle ORM for type-safe queries and wraps critical updates in transactions.
+
+---
 
 ## 5. Hosting Solutions
 
-- **Cloud Provider**:  
-  - **Vercel** (recommended) offers seamless Next.js deployments, auto-scaling, and built-in CDN.  
-  - Alternatively, **Netlify** or any Node.js-capable host will work.
+**Development**
+- **Docker Compose**: Local setup spins up API, PostgreSQL, and (optionally) Redis with a single `docker-compose up`.
 
-- **Benefits**
-  - **Reliability**: Global servers and failover across regions.  
-  - **Scalability**: Auto-scale serverless functions based on traffic.  
-  - **Cost-Effectiveness**: Pay-per-use model means low cost for small projects.
+**Production**
+- **Cloud Provider**: AWS is recommended, using:
+  - **ECS/Fargate** (serverless containers) or **EKS** (Kubernetes).
+  - **RDS (PostgreSQL)** for a managed relational database.
+  - **Elastic Load Balancer** to distribute traffic.
+  - **ECR** for storing container images.
+
+**Benefits**
+- **Reliability**: Managed services with built-in failover.
+- **Scalability**: Services auto-scale based on load.
+- **Cost-Effectiveness**: Pay-as-you-go billing, and you only provision what you need.
+
+---
 
 ## 6. Infrastructure Components
 
-- **Load Balancer**
-  - Provided by the hosting platform—distributes API requests across function instances.
+- **Load Balancer / Reverse Proxy**: AWS ALB or NGINX directs traffic to multiple container instances.
+- **CDN**: Cloudflare or AWS CloudFront to serve frontend assets and offload static content.
+- **Caching**: Redis for session storage or frequently-read reference data.
+- **Message Broker (Optional)**: RabbitMQ or AWS SQS for long-running manufacturing tasks.
+- **Container Registry**: AWS ECR (or Docker Hub) to host container images.
+- **Configuration Management**: Environment variables managed securely via AWS Secrets Manager or Parameter Store.
 
-- **CDN (Content Delivery Network)**
-  - Vercel’s global edge network caches static assets (CSS, JS, images) for faster page loads.
+These components work together so that requests are balanced, static files are served quickly, and data updates remain fast and reliable.
 
-- **Caching**
-  - **Redis** (optional) for session storage or caching dashboard queries to reduce database load.
-
-- **Object Storage**
-  - For file uploads or backups, integrate with AWS S3 or similar services.
-
-- **Message Queue**
-  - In future, use **RabbitMQ** or **Kafka** for background tasks (e.g., email notifications).
+---
 
 ## 7. Security Measures
 
-- **Authentication & Authorization**
-  - Passwords hashed with **bcrypt** and salted.  
-  - Session tokens stored in secure, HttpOnly cookies or Authorization headers.  
-  - Protected endpoints verify tokens before proceeding.
+- **HTTPS/TLS**: Encrypt all in-transit data.
+- **Authentication**: Better Auth library manages secure sign-in and sessions.
+- **Authorization (RBAC)**: Users have assigned roles (Planner, Warehouse, Supervisor) that gate access to endpoints.
+- **Input Validation**: Zod schemas validate request bodies before processing.
+- **Data Encryption at Rest**: Enable encryption for the RDS database and any backups.
+- **Security Headers**: Use Helmet or a similar middleware to set HTTP headers like Content Security Policy and HSTS.
+- **CORS Configuration**: Restrict front-end origins to the known application domains.
 
-- **Data Encryption**
-  - **HTTPS/TLS** encrypts data in transit.  
-  - Database connections use SSL to encrypt data between the app and the database.
-
-- **Input Validation**
-  - Every incoming request is validated (e.g., valid email format, password length) to prevent SQL injection or other attacks.
-
-- **Web Security Best Practices**
-  - Enable **CORS** policies to limit allowed origins.  
-  - Use **CSRF tokens** or same-site cookies to prevent cross-site requests.  
-  - Set secure headers with **Helmet** or a similar middleware.
+---
 
 ## 8. Monitoring and Maintenance
 
-- **Performance Monitoring**
-  - Integrate **Sentry** or **LogRocket** for real-time crash reporting and performance tracing.  
-  - Use Vercel’s built-in analytics to track request latencies and error rates.
+- **Logging**: Pino for structured logs; ship logs to CloudWatch Logs or Elasticsearch.
+- **Error Tracking**: Sentry for capturing and alerting on unhandled exceptions.
+- **Metrics & Dashboards**: Prometheus for metrics collection and Grafana for visualization.
+- **Health Checks**: Docker and AWS health checks for container readiness.
+- **Automated Backups**: Scheduled RDS snapshots and SQL dumps for disaster recovery.
+- **Dependency Updates**: Dependabot or Renovate to keep libraries and Docker images up to date.
+- **Database Migrations**: `drizzle-kit` ensures schema changes are tracked and applied safely across environments.
 
-- **Logging**
-  - Structured logs (JSON) for all API requests and errors, shipped to a log management service like **Datadog** or **Logflare**.
-
-- **Health Checks**
-  - Define a `/health` endpoint that returns a 200 status if the service is up and the database is reachable.
-
-- **Maintenance Strategies**
-  - Automated migrations run on deploy to keep the database schema up to date.  
-  - Scheduled dependency audits and security scans (e.g., `npm audit`).
-  - Regular backups of the database (daily or weekly depending on usage).
+---
 
 ## 9. Conclusion and Overall Backend Summary
 
-The backend for **codeguide-starter** is built on Next.js API Routes and Node.js, paired with PostgreSQL for data and optional Redis for caching. It follows a clear layered architecture that keeps code easy to maintain and extend. With RESTful endpoints for authentication and data, secure practices like password hashing and HTTPS, and hosting on Vercel for scalability and global performance, this setup meets the project’s goals for a fast, secure, and developer-friendly foundation. Future enhancements—such as background job queues, advanced monitoring, or richer data models—can be added without disrupting the core structure.
+This backend structure provides a solid, scalable foundation for a manufacturing application. It combines a modern full-stack TypeScript setup with a robust relational database, secure authentication, and container-based deployment. Key takeaways:
+
+- **Modular and Type-Safe**: Layers separated by function and enforced by TypeScript and Drizzle ORM.
+- **Production-Ready**: HTTPS, RBAC, data encryption, and automated backups cover essential security and reliability needs.
+- **Scalable Infrastructure**: Docker, AWS services, and managed databases ensure you can grow with demand.
+- **Maintainable Workflows**: Clear migration paths, logging, and monitoring keep the system healthy.
+
+With this structure in place, adding manufacturing modules—such as detailed work-order workflows, real-time inventory adjustments, and custom dashboards—is straightforward and safe. The stack’s consistency from development to production minimizes surprises and accelerates delivery of new features.
